@@ -34,10 +34,10 @@ drwxr-xr-x. 3 root root 4096 Dec  2 18:02 /var/lib/warewulf/chroots/rocky-8  <= 
 ```
 
 ## /opt on NFS
-All python and github assets will be installed under **/opt/ai_apps/webui_llama2**.  The /opt directory is assumed to be accessed via NFS at runtime. In addition the CUDA 12.3 binaries will be moved to the **/usr/local/cuda-12.3** and the **/opt/nvidia/nsight** development tools into the **/opt/** directory if not already present.
+All python and github assets will be installed under **/opt/ai_apps/webui_llama2**.  The /opt directory is assumed to be accessed via NFS at runtime. These destinations can be changed via the NFSAPPS install variable or the apptainer --bind flag in the installation script.
 
 ## NVidia Drivers
-Many of the Python modules contain checks against the exact version of the nvidia-driver installed. For this reason the nvidia-driver and CUDA 12.3 driver are both installed in the chroot filesystem rather than at runtime. This will leave a valid bootable linux kernel image inside the chroot's /boot directory as well as an initird image that contains the NVidia and CUDA drivers **(I believe but have not verified this yet)**.
+Many of the Python modules contain checks against the exact version of the nvidia-driver installed. For this reason the nvidia-driver and CUDA 12.3 driver are both installed in the chroot filesystem rather than at runtime. This will leave a valid bootable linux kernel image inside the chroot's /boot directory as well as an initird image that contains the NVidia and CUDA drivers.
 
 ## Installation
 Run the **recipe_llama2.sh** script as **root** on the warewulf master dispatch server and all installation and configuration steps will be completed automatically.
@@ -48,8 +48,6 @@ Run the **recipe_llama2.sh** script as **root** on the warewulf master dispatch 
 - An official **Python 3.11.4** source .TGZ will be downloaded, compiled and **installed into /opt/ai_apps/webui_llama2** since the native Rocky python is too old.
 - The installation will create a series of application scripts in /opt/ai_apps/webui_llama2 that will launch any requested models instantly.
 - The installation will create a **run_server.sh** script that will allow the user to choose a model at launch time including new models added by hand.
-- The chroots/.../usr/local/cuda-12.3 binaries will be moved to the warewulf master server's /opt/cuda/cuda-12.3 and removed from the rootfs.
-- The chroots/.../opt/nvidia/nsight development tools will be moved to the warewulf master server's /opt/nvidia/nsight and removed from the rootfs.
 - All user-facing assets will be *chown*-ed to the **test** user account at the end of the installation.
 
 ## Launching Text-Generation-Webui
