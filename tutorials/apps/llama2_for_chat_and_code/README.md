@@ -49,6 +49,7 @@ Run the **recipe_llama2.sh** script as **root** on the warewulf master dispatch 
 - The installation will create a series of application scripts in /opt/ai_apps/webui_llama2 that will launch any requested models instantly.
 - The installation will create a **run_server.sh** script that will allow the user to choose a model at launch time including new models added by hand.
 - All user-facing assets will be *chown*-ed to the **test** user account at the end of the installation.
+- The **wwctl container build rocky-8** command will run to recreate the bootable container with nvidia driver and updated kernel installed.
 
 ## Launching Text-Generation-Webui
 Assuming the compute server has a single Tesla V100 with 16GB of GPU VideoRAM the user can choose from the set of scripts below. Each of these models is exactly the same and only differs by:
