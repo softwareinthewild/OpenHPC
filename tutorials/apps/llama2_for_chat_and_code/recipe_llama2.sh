@@ -4,8 +4,8 @@
 # Installation of Text-Generation-Webui with Cuda 11 and Code dated Sep 18 2023
 #
 # Note: The cuda 11 above refers to the cuda libs embedded inside the PY module
-# PACKAGES. This installation has been tested with both Cuda 11.8 and Cuda 12.3
-# on the host. Nvidia cross-compatibilty supports both configurations equally.
+# packages. The root filesystem does not need to have CUDA libraries installed.
+# The Rootfs only needs to have the latest nvidia-driver and supporting rpms.
 #
 ###############################################################################
 
@@ -23,45 +23,40 @@ export NFSAPPS=/opt/ai_apps
 export CUDAROOT=/opt/cuda
 export NSIGHTROOT=/opt/nvidia
 
-export APPTAINER_BIND="--bind /tmp:/tmp --bind /opt:/opt"
 export CUDA_REPOSITORY="http://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo"
 export TGW_GITHUB="https://github.com/oobabooga/text-generation-webui.git"
 export TGW_HASHREF="8466cf229ab29ace6e336a96f81f4eda44ca94fa"
 
+# export APPTAINER_BIND="--bind /tmp:/tmp:rw,/opt:/opt:rw"
+# The --bind /tmp:/tmp,/opt,/opt flag was moved into a variable called APPTAINER_BIND but
+# that triggered an unusual side-effect where /root/--bind was substituted in front of the
+# flag. /root/ == $PWD at the time.  Very odd so just hard code mounts for now.
+
 echo "LLaMa2 / CodeLLaMa installation started $(date)"
 
-dnf -y --installroot="${CHROOT}" install wget curl libpciaccess nvme-cli
-dnf -y --installroot="${CHROOT}" install numad numatop
-dnf -y --installroot="${CHROOT}" install yum-utils
+# Command line to wrap chroot filesystem with a full apptainer container for native build/install 
+apptainer_shell="apptainer exec --writable --containall --disable-cache --cleanenv --no-home --hostname rocky --allow-setuid --bind /tmp:/tmp,/opt:/opt ${CHROOT}/."
 
-# Prevent dnf/yum from checking for disk space for future runs of dnf install on ramdisk
-dnf -y --installroot="${CHROOT}" config-manager --setopt="diskspacecheck=false" --save
-dnf -y --installroot="${CHROOT}" config-manager --add-repo ${CUDA_REPOSITORY}
+# Crucial llama_cpp_python module needs gcc-c++ or it will not build and many packages fail install
+${apptainer_shell} bash -e -x -c "dnf -y install gcc-c++"
 
-dnf -y --installroot="${CHROOT}" install epel-release
-dnf -y --installroot="${CHROOT}" install kernel-core kernel-modules kernel-headers
-dnf -y --installroot="${CHROOT}" install cuda-12-3
+${apptainer_shell} bash -e -x -c "dnf -y install wget curl libpciaccess nvme-cli numad numatop yum-utils"
+
+# Prevent dnf/yum from checking free disk space for future runs of dnf install on ramdisk
+${apptainer_shell} bash -e -x -c "dnf -y config-manager --setopt=diskspacecheck=false --save"
+${apptainer_shell} bash -e -x -c "dnf -y config-manager --add-repo ${CUDA_REPOSITORY}"
+
+${apptainer_shell} bash -e -x -c "dnf -y install epel-release"
+${apptainer_shell} bash -e -x -c "dnf -y install kernel-core kernel-modules kernel-headers"
+
+PACKAGES="dnf-plugin-nvidia nvidia-driver nvidia-driver-devel nvidia-driver-cuda nvidia-persistenced"
+${apptainer_shell} bash -e -x -c "dnf -y install ${PACKAGES}"
 
 # Power management may be helpful or at worst a no-op.
-ln -s /usr/lib/systemd/system/nvidia-powerd.service "${CHROOT}/etc/systemd/system/multi-user.target.wants"
-
-# Move the rootfs/usr/local/cuda-12.3 to the /opt on warewulf server for nfs
-# Move the rootfs/opt/nvidia to /opt/ on nfs server
-mkdir -fv "${CUDAROOT}"
-if [ -d "${CUDAROOT}/cuda-12.3" ]
-then
-    rm -fv "${CHROOT}/usr/local/cuda-12.3"
-else
-    mv -fv "${CHROOT}/usr/local/cuda-12.3" "${CUDAROOT}"/
-fi
-
-# Symlink will resolve at run-time via NFS /opt mount.
-ln -s /opt/cuda/cuda-12.3 "${CHROOT}/usr/local/cuda-12.3"
-
+${apptainer_shell} bash -e -x -c "systemctl set-default multi-user"
+${apptainer_shell} bash -e -x -c "systemctl enable nvidia-powerd"
+ 
 dnf -y --installroot="${CHROOT}" clean all
-
-# Command line to run apptainer around the chroot filesystem for native build/install 
-apptainer_shell="apptainer exec --writable --disable-cache --cleanenv --no-home --hostname rocky-8 --allow-setuid ${APPTAINER_BIND} '${CHROOT}'"
 
 # Python interpreter build requirements, may be uninstalled after PY build
 PACKAGES="tk-devel tcl-devel xz-devel gdbm-devel libffi-devel openssl-devel bzip2-devel libuuid-devel readline-devel sqlite-devel ncurses-devel"
@@ -76,11 +71,10 @@ cat <<EOF >"${NFSAPPS}/webui_llama2/run_python.sh"
 #!/bin/bash --
 export PYVER=3.11.4
 export CODELLAMA_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
-export PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/bin:/usr/local/cuda/bin:/bin:/usr/bin:/usr/local/bin"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-PACKAGES/nvidia/cudnn/lib"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-PACKAGES/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-PACKAGES/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
-# export LD_LIBRARY_PATH="/opt/tools/nvidia/TensorRT-8.6.1.6/lib:\${LD_LIBRARY_PATH}"
+export PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/bin:/usr/local/bin"
+export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
+export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
 
 exec "\${CODELLAMA_INSTALL_ROOT}/python_3.11.4/bin/python3.11" "\$@"
 EOF
@@ -167,13 +161,12 @@ cat <<EOF >"${NFSAPPS}/webui_llama2/run_wizard_13b_8bit_code.sh"
 #!/bin/bash --
 export PYVER=3.11.4
 export CODELLAMA_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
-export PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/bin:/usr/local/cuda/bin:/bin:/usr/bin:/usr/local/bin"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-PACKAGES/nvidia/cudnn/lib"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-PACKAGES/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-PACKAGES/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
-# export LD_LIBRARY_PATH="/opt/tools/nvidia/TensorRT-8.6.1.6/lib:\${LD_LIBRARY_PATH}"
+export PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/bin:/usr/local/bin"
+export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
+export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
 
-# Will get KeyError: cat-chat if not run from inside t-g-w/ root directory
+# Will get KeyError: exception if not run from inside t-g-w/ directory
 cd "\${CODELLAMA_INSTALL_ROOT}/text-generation-webui"
 exec "\${CODELLAMA_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --load-in-8bit --listen  --api --extensions openai --model WizardCoder-Python-13B-V1.0 "\$@"
 EOF
@@ -194,13 +187,12 @@ cat <<EOF >"${NFSAPPS}/webui_llama2/run_wizard_7b_16bit_code.sh"
 #!/bin/bash --
 export PYVER=3.11.4
 export CODELLAMA_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
-export PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/bin:/usr/local/cuda/bin:/bin:/usr/bin:/usr/local/bin"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-PACKAGES/nvidia/cudnn/lib"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-PACKAGES/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-PACKAGES/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
-# export LD_LIBRARY_PATH="/opt/tools/nvidia/TensorRT-8.6.1.6/lib:\${LD_LIBRARY_PATH}"
+export PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/bin:/usr/local/bin"
+export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
+export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
 
-# Will get KeyError: cat-chat if not run from inside t-g-w/ root directory
+# Will get KeyError: exception if not run from inside t-g-w/ directory
 cd "\${CODELLAMA_INSTALL_ROOT}/text-generation-webui"
 exec "\${CODELLAMA_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --listen  --api --extensions openai --model WizardCoder-Python-7B-V1.0 "\$@"
 EOF
@@ -228,13 +220,12 @@ cat <<EOF >"${NFSAPPS}/webui_llama2/run_wizard_13b_4bit_code.sh"
 #!/bin/bash --
 export PYVER=3.11.4
 export CODELLAMA_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
-export PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/bin:/usr/local/cuda/bin:/bin:/usr/bin:/usr/local/bin"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-PACKAGES/nvidia/cudnn/lib"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-PACKAGES/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-PACKAGES/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
-# export LD_LIBRARY_PATH="/opt/tools/nvidia/TensorRT-8.6.1.6/lib:\${LD_LIBRARY_PATH}"
+export PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/bin:/usr/local/bin"
+export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
+export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
 
-# Will get KeyError: cat-chat if not run from inside t-g-w/ root directory
+# Will get KeyError: exception if not run from inside t-g-w/ directory
 cd "\${CODELLAMA_INSTALL_ROOT}/text-generation-webui"
 exec "\${CODELLAMA_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --listen --api --extensions openai --model WizardCoder-Python-13B-V1.0-GPTQ "\$@"
 EOF
@@ -260,13 +251,12 @@ cat <<EOF >"${NFSAPPS}/webui_llama2/run_wizard_7b_4bit_code.sh"
 #!/bin/bash --
 export PYVER=3.11.4
 export CODELLAMA_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
-export PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/bin:/usr/local/cuda/bin:/bin:/usr/bin:/usr/local/bin"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-PACKAGES/nvidia/cudnn/lib"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-PACKAGES/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-PACKAGES/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
-# export LD_LIBRARY_PATH="/opt/tools/nvidia/TensorRT-8.6.1.6/lib:\${LD_LIBRARY_PATH}"
+export PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/bin:/usr/local/bin"
+export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
+export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
 
-# Will get KeyError: cat-chat if not run from inside t-g-w/ root directory
+# Will get KeyError: exception if not run from inside t-g-w/ directory
 cd "\${CODELLAMA_INSTALL_ROOT}/text-generation-webui"
 exec "\${CODELLAMA_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --no_inject_fused_attention --api --extensions openai --listen --model WizardCoder-Python-7B-V1.0-GPTQ "\$@"
 EOF
@@ -293,13 +283,12 @@ cat <<EOF >"${NFSAPPS}/webui_llama2/run_wizard_1b_32bit_code.sh"
 #!/bin/bash --
 export PYVER=3.11.4
 export CODELLAMA_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
-export PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/bin:/usr/local/cuda/bin:/bin:/usr/bin:/usr/local/bin"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-PACKAGES/nvidia/cudnn/lib"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-PACKAGES/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-PACKAGES/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
-# export LD_LIBRARY_PATH="/opt/tools/nvidia/TensorRT-8.6.1.6/lib:\${LD_LIBRARY_PATH}"
+export PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/bin:/usr/local/bin"
+export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
+export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
 
-# Will get KeyError: cat-chat if not run from inside t-g-w/ root directory
+# Will get KeyError: exception if not run from inside t-g-w/ directory
 cd "\${CODELLAMA_INSTALL_ROOT}/text-generation-webui"
 exec "\${CODELLAMA_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --listen --api --extensions openai --model WizardCoder-1B-V1.0 "\$@"
 EOF
@@ -317,13 +306,12 @@ cat <<EOF >"${NFSAPPS}/webui_llama2/run_webui_server.sh"
 #!/bin/bash --
 export PYVER=3.11.4
 export CODELLAMA_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
-export PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/bin:/usr/local/cuda/bin:/bin:/usr/bin:/usr/local/bin"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-PACKAGES/nvidia/cudnn/lib"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-PACKAGES/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-PACKAGES/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
-# export LD_LIBRARY_PATH="/opt/tools/nvidia/TensorRT-8.6.1.6/lib:\${LD_LIBRARY_PATH}"
+export PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/bin:/usr/local/bin"
+export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
+export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
 
-# Will get KeyError: cat-chat if not run from inside t-g-w/ root directory
+# Will get KeyError: exception if not run from inside t-g-w/ directory
 cd "\${CODELLAMA_INSTALL_ROOT}/text-generation-webui"
 exec "\${CODELLAMA_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --listen  --api --extensions openai --model-menu "\$@"
 EOF
@@ -332,6 +320,13 @@ chmod 755 "${NFSAPPS}/webui_llama2/run_webui_server.sh"
 
 # ========================================================================================
 
-${apptainer_shell} bash -e -x -c 'cd "'"${NFSAPPS}"'"/; chown -Rh test:users .'
+${apptainer_shell} bash -e -x -c 'chown -Rh test:users "'"${NFSAPPS}"'"/'
+
+# ========================================================================================
+# Container rebuild is crucial, other commands may not be needed but should be harmless
+wwctl container build rocky-8
+wwctl configure --all
+wwctl overlay build
+wwctl server restart
 
 echo "LLaMa2 / CodeLLaMa installation completed $(date)"
