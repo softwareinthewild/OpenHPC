@@ -139,7 +139,12 @@ PACKAGES="${PACKAGES} https://github.com/jllllll/GPTQ-for-LLaMa-CUDA/releases/do
 PACKAGES="${PACKAGES} https://github.com/jllllll/llama-cpp-python-cuBLAS-wheels/releases/download/textgen-webui/llama_cpp_python_cuda-0.1.85+cu117-cp311-cp311-linux_x86_64.whl"
 ${apptainer_shell} bash -e -x -c 'export INSTPATH="'"${NFSAPPS}"'"/webui_llama2; ${INSTPATH}/run_python.sh -mpip install --no-cache-dir '"${PACKAGES}"
 
+# ========================================================================================
+# Clear out cruft left behind by pip installer, -no-cache-dir doesn't always work.
+${apptainer_shell} bash -e -x -c 'rm -rf ~/.cache/pip'
 
+# ========================================================================================
+# Download models right next to app that runs them so backups are consistent.
 ${apptainer_shell} bash -e -x -c 'mkdir -pv "'"${NFSAPPS}"'"/webui_llama2/models'
 
 # ========================================================================================
