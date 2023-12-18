@@ -48,6 +48,8 @@ Run the **recipe_llama2.sh** script as **root** on the warewulf master dispatch 
 - The install will use **apptainer exec** to mount (--bind) the warewulf master /opt to the chroot /opt in the same way a running NFS /opt mount would work.
 - The Python applications and ML Models will be installed into **/opt/ai_apps/webui_llama2/models** and is partially configurable via the NFSAPPS variable.
 - An official **Python 3.11.4** source .TGZ will be downloaded, compiled and **installed into /opt/ai_apps/webui_llama2** since the native Rocky python is too old.
+- The chroots/.../usr/local/cuda-12.3 binaries will be moved to the warewulf master server's /opt/cuda/cuda-12.3 and removed from the rootfs.
+- The chroots/.../opt/nvidia/nsight development tools will be moved to the warewulf master server's /opt/nvidia/nsight and removed from the rootfs.
 - The installation will create a series of application scripts in /opt/ai_apps/webui_llama2 that will launch any requested models instantly.
 - The installation will create a **run_server.sh** script that will allow the user to choose a model at launch time including new models added by hand.
 - All user-facing assets will be *chown*-ed to the **test** user account at the end of the installation.
