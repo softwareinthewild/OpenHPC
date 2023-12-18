@@ -27,6 +27,8 @@ export CUDA_REPOSITORY="http://developer.download.nvidia.com/compute/cuda/repos/
 export TGW_GITHUB="https://github.com/oobabooga/text-generation-webui.git"
 export TGW_HASHREF="8466cf229ab29ace6e336a96f81f4eda44ca94fa"
 
+# ========================================================================================
+
 # export APPTAINER_BIND="--bind /tmp:/tmp:rw,/opt:/opt:rw"
 # The --bind /tmp:/tmp,/opt,/opt flag was moved into a variable called APPTAINER_BIND but
 # that triggered an unusual side-effect where /root/--bind was substituted in front of the
@@ -49,7 +51,7 @@ ${apptainer_shell} bash -e -x -c "dnf -y config-manager --add-repo ${CUDA_REPOSI
 ${apptainer_shell} bash -e -x -c "dnf -y install epel-release"
 ${apptainer_shell} bash -e -x -c "dnf -y install kernel-core kernel-modules kernel-headers"
 
-PACKAGES="dnf-plugin-nvidia nvidia-driver nvidia-driver-devel nvidia-driver-cuda nvidia-persistenced"
+PACKAGES="dnf-plugin-nvidia nvidia-driver nvidia-driver-devel nvidia-driver-cuda nvidia-persistenced cuda-12.3"
 ${apptainer_shell} bash -e -x -c "dnf -y install ${PACKAGES}"
 
 # Power management may be helpful or at worst a no-op.
@@ -57,6 +59,29 @@ ${apptainer_shell} bash -e -x -c "systemctl set-default multi-user"
 ${apptainer_shell} bash -e -x -c "systemctl enable nvidia-powerd"
  
 dnf -y --installroot="${CHROOT}" clean all
+
+# ========================================================================================
+
+# For some reason cuda-10 is installed if cuda not explicitly installed by admin
+
+# Move the rootfs/usr/local/cuda-12.3 to the /opt on warewulf server for nfs
+# Move the rootfs/opt/nvidia to /opt/ on nfs server
+mkdir -fv "${CUDAROOT}"
+if [ -d "${CUDAROOT}/cuda-12.3" ]
+then
+    rm -fv "${CHROOT}/usr/local/cuda-12.3"
+else
+    mv -fv "${CHROOT}/usr/local/cuda-12.3" "${CUDAROOT}"/
+fi
+
+rm -fv "${CHROOT}/usr/local/cuda"
+rm -fv "${CHROOT}/usr/local/cuda-12"
+ln -sfv cuda-12.3 "${CHROOT}/usr/local/cuda"
+ln -sfv cuda-12.3 "${CHROOT}/usr/local/cuda-12"
+# Symlink will resolve at run-time via NFS /opt mount.
+ln -s /opt/cuda/cuda-12.3 "${CHROOT}/usr/local/cuda-12.3"
+
+# ========================================================================================
 
 # Python interpreter build requirements, may be uninstalled after PY build
 PACKAGES="tk-devel tcl-devel xz-devel gdbm-devel libffi-devel openssl-devel bzip2-devel libuuid-devel readline-devel sqlite-devel ncurses-devel"
