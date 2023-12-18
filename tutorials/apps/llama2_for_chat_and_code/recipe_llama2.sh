@@ -91,8 +91,6 @@ ${apptainer_shell} bash -e -x -c "rpm -e --nodeps ${PACKAGES}"
 
 ${apptainer_shell} bash -e -x -c 'dnf -y install git git-lfs'
 ${apptainer_shell} bash -e -x -c 'export PYVER=3.11.4; export INSTPATH="'"${NFSAPPS}"'"/webui_llama2; cd ${INSTPATH}; git clone '"${TGW_GITHUB}"'; cd text-generation-webui; git checkout '"${TGW_HASHREF}"
-# When NFS:/opt is read-only the t-g-w tries to generate image and config files for the optional character personas. Hide and read-only mount works fine. 
-${apptainer_shell} bash -e -x -c 'export INSTPATH="'"${NFSAPPS}"'"/webui_llama2; cd ${INSTPATH}; mkdir text-generation-webui/characters/hide; mv -fv text-generation-webui/characters/*.*  text-generation-webui/characters/hide/'
 
 cat <<EOF >"${NFSAPPS}/webui_llama2/run_python.sh"
 #!/bin/bash --
