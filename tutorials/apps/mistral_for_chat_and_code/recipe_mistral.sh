@@ -19,7 +19,7 @@
 # 10GB of GPU VRam utilization on 16GB VRam systems.
 
 export CHROOT=/var/lib/warewulf/chroots/rocky-8/rootfs
-export NFSAPPS=/opt/ai_apps/webui_llama2
+export NFSAPPS=/opt/ai_apps/webui_mistral
 export CUDAROOT=/opt/cuda
 export NSIGHTROOT=/opt/nvidia
 
@@ -34,7 +34,7 @@ export TGW_HASHREF="8466cf229ab29ace6e336a96f81f4eda44ca94fa"
 # that triggered an unusual side-effect where /root/--bind was substituted in front of the
 # flag. /root/ == $PWD at the time.  Very odd so just hard code mounts for now.
 
-echo "LLaMa2 / CodeLLaMa installation started $(date)"
+echo "Mistral / Code-Mistral installation started $(date)"
 
 # Command line to wrap chroot filesystem with a full apptainer container for native build/install 
 apptainer_shell="apptainer exec --writable --containall --disable-cache --cleanenv --no-home --hostname rocky --allow-setuid --bind /tmp:/tmp,/opt:/opt ${CHROOT}/."
@@ -105,7 +105,7 @@ cat <<EOF >"${NFSAPPS}/run_python.sh"
 #!/bin/bash --
 export PYVER=3.11.4
 export LLMSW_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
-export PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/local/cuda/bin:/usr/bin:/usr/local/bin"
+export PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/bin:/usr/local/cuda/bin:/bin:/usr/bin:/usr/local/bin"
 export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
 export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
 export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
@@ -183,7 +183,73 @@ ${apptainer_shell} bash -e -x -c 'mkdir -pv "'"${NFSAPPS}"'"/models'
 
 # ========================================================================================
 #
-# This is a 13 Billion floating point x 8-Bit model that was downsampled (Quantized) from
+# This is a 7 Billion floating point x 16-Bit model. This model also uses 14.8 GB of VRam
+# but does not use any downsampling (quantizition) during loading. This is the largest
+# unaltered model that will fit and run on a 16GB GPU.
+#
+MODEL_REPO="https://huggingface.co/HuggingFaceH4/zephyr-7b-beta"
+${apptainer_shell} bash -e -x -c 'cd "'"${NFSAPPS}"'"/models; git lfs clone '"${MODEL_REPO}"
+${apptainer_shell} bash -e -x -c 'cd "'"${NFSAPPS}"'"/text-generation-webui/models; ln -sfv ../../models/zephyr-7b-beta .'
+
+cat <<EOF >"${NFSAPPS}/run_zephyr_7b_16bit_code.sh"
+#!/bin/bash --
+export PYVER=3.11.4
+export LLMSW_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
+export PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/local/cuda/bin:/usr/bin:/usr/local/bin"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
+
+# Will get KeyError: exception if not run from inside t-g-w/ directory
+cd "\${LLMSW_INSTALL_ROOT}/text-generation-webui"
+exec "\${LLMSW_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --listen --extensions openai --model zephyr-7b-beta "\$@"
+EOF
+
+chmod 755 "${NFSAPPS}/un_zephyr_7b_16bit_code.sh"
+
+# This is a 7 Billion floating point x 8-Bit model. This model also uses 8 GB of VRam
+#
+
+cat <<EOF >"${NFSAPPS}/run_zephyr_7b_8bit_code.sh"
+#!/bin/bash --
+export PYVER=3.11.4
+export LLMSW_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
+export PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/local/cuda/bin:/usr/bin:/usr/local/bin"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
+
+# Will get KeyError: exception if not run from inside t-g-w/ directory
+cd "\${LLMSW_INSTALL_ROOT}/text-generation-webui"
+exec "\${LLMSW_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --listen --load-in-8bit --extensions openai --model zephyr-7b-beta "\$@"
+EOF
+
+chmod 755 "${NFSAPPS}/un_zephyr_7b_8bit_code.sh"
+
+# ========================================================================================
+#
+# This is a 7 Billion floating point x 16-Bit model. This model also uses 13.2 GB of VRam
+# but does not use any downsampling (quantizition) during loading. This is the largest
+# unaltered model that will fit and run on a 16GB GPU.
+#
+cat <<EOF >"${NFSAPPS}/run_dolphin_7b_16bit_chat.sh"
+#!/bin/bash --
+export PYVER=3.11.4
+export LLMSW_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
+export PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/local/cuda/bin:/usr/bin:/usr/local/bin"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
+
+# Will get KeyError: exception if not run from inside t-g-w/ directory
+cd "\${LLMSW_INSTALL_ROOT}/text-generation-webui"
+exec "\${LLMSW_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --listen  --extensions openai --model dolphin-2.1-mistral-7b "\$@"
+EOF
+
+chmod 755 "${NFSAPPS}/run_dolphin_7b_16bit_chat.sh"
+
+#
+# This is a 7 Billion floating point x 8-Bit model that was downsampled (Quantized) from
 # a 16-bit model on the fly during loading.  Note the --load-in-8bit flag on the command
 # line.  Experience dictates that a drop fropm 32 to 16 or 16 to 8 does a good job of
 # preserving accuracy when loaded on the fly.  Dropping to 4bit on the fly can make the
@@ -192,11 +258,7 @@ ${apptainer_shell} bash -e -x -c 'mkdir -pv "'"${NFSAPPS}"'"/models'
 # This occupies 13.4 GB of VRam leaving plenty of room for query processing but not much
 # else. This is the best option for a dedicated 16GB GPU used for code and code-review work.
 #
-MODEL_REPO="https://huggingface.co/WizardLM/WizardCoder-Python-13B-V1.0"
-${apptainer_shell} bash -e -x -c 'cd "'"${NFSAPPS}"'"/models; git lfs clone '"${MODEL_REPO}"
-${apptainer_shell} bash -e -x -c 'cd "'"${NFSAPPS}"'"/text-generation-webui/models; ln -sfv ../../models/WizardCoder-Python-7B-V1.0 .'
-
-cat <<EOF >"${NFSAPPS}/run_wizard_13b_8bit_code.sh"
+cat <<EOF >"${NFSAPPS}/run_dolphin_7b_8bit_chat.sh"
 #!/bin/bash --
 export PYVER=3.11.4
 export LLMSW_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
@@ -207,55 +269,23 @@ export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/s
 
 # Will get KeyError: exception if not run from inside t-g-w/ directory
 cd "\${LLMSW_INSTALL_ROOT}/text-generation-webui"
-exec "\${LLMSW_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --load-in-8bit --listen  --api --extensions openai --model WizardCoder-Python-13B-V1.0 "\$@"
+exec "\${LLMSW_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --load-in-8bit --listen  --extensions openai --model dolphin-2.1-mistral-7b "\$@"
 EOF
 
-chmod 755 "${NFSAPPS}/run_wizard_13b_8bit_code.sh"
+chmod 755 "${NFSAPPS}/run_dolphin_7b_8bit_chat.sh"
 
 # ========================================================================================
 #
-# This is a 7 Billion floating point x 16-Bit model. This model also uses 13.2 GB of VRam
-# but does not use any downsampling (quantizition) during loading. This is the largest
-# unaltered model that will fit and run on a 16GB GPU.
-#
-MODEL_REPO="https://huggingface.co/WizardLM/WizardCoder-Python-7B-V1.0"
-${apptainer_shell} bash -e -x -c 'cd "'"${NFSAPPS}"'"/models; git lfs clone '"${MODEL_REPO}"
-${apptainer_shell} bash -e -x -c 'cd "'"${NFSAPPS}"'"/text-generation-webui/models; ln -sfv ../../models/WizardCoder-Python-7B-V1.0 .'
-
-cat <<EOF >"${NFSAPPS}/run_wizard_7b_16bit_code.sh"
-#!/bin/bash --
-export PYVER=3.11.4
-export LLMSW_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
-export PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/local/cuda/bin:/usr/bin:/usr/local/bin"
-export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
-export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
-export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
-
-# Will get KeyError: exception if not run from inside t-g-w/ directory
-cd "\${LLMSW_INSTALL_ROOT}/text-generation-webui"
-exec "\${LLMSW_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --listen  --api --extensions openai --model WizardCoder-Python-7B-V1.0 "\$@"
-EOF
-
-chmod 755 "${NFSAPPS}/run_wizard_7b_16bit_code.sh"
-
-# ========================================================================================
-#
-# This is a 13 Billion floating point x 4-bit model that will use about 9.2 GB of VRam.
+# This is a 7 Billion floating point x 4-bit model that will use about 5 GB of VRam.
 # It will also use about 500M of VRam when under load answering small questions.
 # If you plan to run other models on the same GPU for other purposes then this might
 # be a good option for code-generation dominant GPU work.
 #
-# /opt/ai_apps/webui_llama2/models/WizardCoder-Python-13B-V1.0-GPTQ/config.json
-#     "quantization_config": {
-#         "bits": 4,
-#         . . .
-#         "quant_method": "gptq"
-
-MODEL_REPO="https://huggingface.co/TheBloke/WizardCoder-Python-13B-V1.0-GPTQ"
+MODEL_REPO="https://huggingface.co/TheBloke/dolphin-2.1-mistral-7b-GPTQ"
 ${apptainer_shell} bash -e -x -c 'cd "'"${NFSAPPS}"'"/models; git lfs clone '"${MODEL_REPO}"
-${apptainer_shell} bash -e -x -c 'cd "'"${NFSAPPS}"'"/text-generation-webui/models; ln -sfv ../../models/WizardCoder-Python-13B-V1.0-GPTQ .'
+${apptainer_shell} bash -e -x -c 'cd "'"${NFSAPPS}"'"/text-generation-webui/models; ln -sfv ../../models/dolphin-2.1-mistral-7b-GPTQ .'
 
-cat <<EOF >"${NFSAPPS}/run_wizard_13b_4bit_code.sh"
+cat <<EOF >"${NFSAPPS}/run_dolphin_7b_4bit_chat.sh"
 #!/bin/bash --
 export PYVER=3.11.4
 export LLMSW_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
@@ -264,75 +294,21 @@ export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/s
 export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
 export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
 
-# Will get KeyError: exception if not run from inside t-g-w/ directory
-cd "\${LLMSW_INSTALL_ROOT}/text-generation-webui"
-exec "\${LLMSW_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --listen --api --extensions openai --model WizardCoder-Python-13B-V1.0-GPTQ "\$@"
-EOF
 
-chmod 755 "${NFSAPPS}/run_wizard_13b_4bit_code.sh"
+# In the new version of text-generation-webui the default model loader for GPTQ models chagned from AutoGPTQ
+# to Exllamav2_HF. This new default loader has a bug that reinflates a 4bit model back to 8bit inside the GPU
+# consuming a long of GPU memory for nothing.  Disabling all exllama{}v2} parsers and forcing the loader back
+# to AutoGPTQ lets this model in 5.2GB leaving lots of room for other apps to share the GPU.  Also note that
+# the mistral model performance is slower that others but it's worth the memory savings for MemGPT co-usage.
+# Mistral models are more complicated internally than llama2 so this slowness is expected when quantized.
 
-# ========================================================================================
-#
-# This is a 7 Billion floating point x 4-bit model that will use about 6.0 GB of VRam.
-# It will also use about 500M of VRam when under load answering small questions.
-# If you plan to run other models on the same GPU for other purposes then this might
-# be a good option for code-generation dominant GPU work.
-
-# NOTE: This model generate an error message at startup about turning off injected attention
-# support so   --no_inject_fused_attention   was added to the coammand line.
-#
-#
-MODEL_REPO="https://huggingface.co/TheBloke/WizardCoder-Python-7B-V1.0-GPTQ"
-${apptainer_shell} bash -e -x -c 'cd "'"${NFSAPPS}"'"/models; git lfs clone '"${MODEL_REPO}"
-${apptainer_shell} bash -e -x -c 'cd "'"${NFSAPPS}"'"/text-generation-webui/models; ln -sfv ../../models/WizardCoder-Python-7B-V1.0-GPTQ .'
-
-cat <<EOF >"${NFSAPPS}/run_wizard_7b_4bit_code.sh"
-#!/bin/bash --
-export PYVER=3.11.4
-export LLMSW_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
-export PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/local/cuda/bin:/usr/bin:/usr/local/bin"
-export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
-export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
-export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
 
 # Will get KeyError: exception if not run from inside t-g-w/ directory
 cd "\${LLMSW_INSTALL_ROOT}/text-generation-webui"
-exec "\${LLMSW_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --no_inject_fused_attention --api --extensions openai --listen --model WizardCoder-Python-7B-V1.0-GPTQ "\$@"
+exec "\${LLMSW_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --listen --disable_exllama --disable_exllamav2 --loader autogptq --extensions openai --model dolphin-2.1-mistral-7b-GPTQ "\$@"
 EOF
 
-chmod 755 "${NFSAPPS}/run_wizard_7b_4bit_code.sh"
-
-# ========================================================================================
-#
-# This is a 1 Billion floating point x 32-Bit model. If the code requests you have are
-# relatively simple and you want them to run as fast as possible then this is a good option.
-# The underlying english language processing may not be great at resolving ambiguous context
-# so be as specific as possible.  Like you are running up to a stranger on the street with
-# a star-trek t-shirt and need to give them all the request info on the first shot. Be very
-# very specific and ask for code in small chunks... Give an exampe of a program main, given
-# an example of a class, given an exampe of a function, give an example of another function...
-#
-# Uses about 2.5GB of video ram.
-
-MODEL_REPO="https://huggingface.co/WizardLM/WizardCoder-1B-V1.0"
-${apptainer_shell} bash -e -x -c 'cd "'"${NFSAPPS}"'"/models; git lfs clone '"${MODEL_REPO}"
-${apptainer_shell} bash -e -x -c 'cd "'"${NFSAPPS}"'"/text-generation-webui/models; ln -sfv ../../models/WizardCoder-Python-7B-V1.0 .'
-
-cat <<EOF >"${NFSAPPS}/run_wizard_1b_32bit_code.sh"
-#!/bin/bash --
-export PYVER=3.11.4
-export LLMSW_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
-export PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/local/cuda/bin:/usr/bin:/usr/local/bin"
-export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
-export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
-export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
-
-# Will get KeyError: exception if not run from inside t-g-w/ directory
-cd "\${LLMSW_INSTALL_ROOT}/text-generation-webui"
-exec "\${LLMSW_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --listen --api --extensions openai --model WizardCoder-1B-V1.0 "\$@"
-EOF
-
-chmod 755 "${NFSAPPS}/run_wizard_1b_32bit_code.sh"
+chmod 755 "${NFSAPPS}/run_dolphin_7b_4bit_chat.sh"
 
 # ========================================================================================
 #
@@ -345,7 +321,7 @@ cat <<EOF >"${NFSAPPS}/run_webui_server.sh"
 #!/bin/bash --
 export PYVER=3.11.4
 export LLMSW_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
-export PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/local/cuda/bin:/usr/bin:/usr/local/bin"
+export PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/bin:/usr/local/cuda/bin:/bin:/usr/bin:/usr/local/bin"
 export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
 export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
 export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
@@ -368,4 +344,4 @@ wwctl configure --all
 wwctl overlay build
 wwctl server restart
 
-echo "LLaMa2 / CodeLLaMa installation completed $(date)"
+echo "Mistral / Code-Mistral installation completed $(date)"

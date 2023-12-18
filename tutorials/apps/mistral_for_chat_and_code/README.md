@@ -7,7 +7,7 @@
 </table>
 
 ## Table of Contents
-- [What are LLaMa 2 and CodeLLaMa](#what-are-llama-2-and-codellama)
+- [What are Mistral Dolphin and Zephyr](#what-are-mistral-dolphin-and-zephyr)
 - [Installation](#installation)
 - [Advice](#advice)
 - [/opt on NFS](#opt-on-nfs)
@@ -19,43 +19,24 @@
 - [Prompt Engineering](#prompt-engineering)
 - [Explanations and Code Reviews](#explanations-and-code-reviews)
 - [Preloaded Code](#preloaded-code)
-- [What are LLaMa2 and CodeLLaMa](#what-are-llama2-and-codellama)
+- [What are LLaMa2 and CodeLLaMa](#what-are-mistral-and-codellama)
 - [References](#references)
 
-## What are LLaMa2 and CodeLLaMa
-**LLaMa2** is a Machine Learning (ML) Large Language Mode (LLM) created by Meta (aka. Facebook) and released to the public in July 2023. The LLaMa2 license permits unlimited Public and Commercial use except for Meta's AI direct competitors (Google, LinkedIn...). This openness has sparked a massive eco-system of derivative models retrained for personal and practical use. In ML, the term retraining is analogous to providing a software patch with new functionality, new information or both.
+## What are Mistral Dolphin and Zephyr
+**Mistral** is a Machine Learning (ML) Large Language Mode (LLM) created by a small company called MistralAI and released to the public in late September 2023. Mistral was released under the Apache 2.0 license permitting unlimited Public and Commercial use. This new model, along with its impressive big brother Mixtral MoE is competing with LLaMa2 for the top spot in Open Source private-use models. The two most popular derivateives of the Mistral model are the Dolphin and Zephyr specialized models.
 
-All LLaMa2 derived models follow the same structure so they are interchangeable within the text-generation-webui software as long as your hardware has the required GPU resources. This installation procedure will download and install the **WizardLM** set of Code models derived from the CodeLLaMa text-to-code (English to Source Code) generator. If you look for the **WizardLM** model set on huggingface.com you will also notice other specialized models retrained for Math-Reasoning (aka solving SAT questions) and other impressive use cases.
+**Dolphin** tends to be optimized for Assistant applications or direct ask-and-respond interactions designed of a work computers assigned to specific tasks. **Zephyr** is a realigned edition of the Mistral LLM format retrained by the Open Source community to improved accuracy in wide range of use-cases like Code Generation. For most daily applications there is very little difference between LLaMa 2 and Mistral. However, as the langauge model becomes integrated as a backend into more complex configurations, the Dolphin model is said to outperform most others in concise response and reduced halucination.
 
-The links below provide useful general information about the original LLaMa2 and CodeLLaMa models, however we will not be using these as they are considered **outdated** for daily use. They are only 4 months old but the ML development community moves so quickly that newer, more efficient models are available. It is worth a read to get familiar with terminology around ML models.  Yes, at the time of this writing these original models are only 4 months old but have been superseded by publicly created derivatives that are more accurate and more efficient when running on desktop GPU systems with limited Video RAM Memory.
+Also note that the Mistral model was only released in a 7 Billion parameter size (actually 7.3B to be precise). The original datasets used to create Mistral are not public so larger models cannot be made outside of MistralAI. General information on the Internet hints that MistraAI has a 34B and another much larger sized model inhouse but that is not publically confirmed at this time. For this reason there are only 7B parameter options and a few experimental 3B parameter models in evaluation for mobile phone use.
 
-```
-See https://huggingface.co/meta-llama
-
-See https://huggingface.co/codellama
-```
-
-The **WizardLM** series of models is just one of many retrained code-generation variants that exhibit a high accuracy across many interpreted (Python, Ruby, Go), compiled (C++, Java) and administrative (Linux/Bash, Ansible, ...) languages. These are highly reliable and quite efficient on GPU memory so they are used here.  However, to get the most out of your private GPU experience we will take it to the next level with GPTQ Quantization.
-
-```
-See https://huggingface.co/WizardLM
-
-```
-
-On huggingface.com there is an account called **TheBloke** that specializes in converting every model available in all sorts of formats {PyTorch format, safetensors format, TensorFlow format, etc...} into a single standardized format that is compatible with the **Hugging Face Transformers** Python module.  The **TheBloke** account also provides the larger models in 4-Bit Quantized formats.  I have been lead to believe, but cannot confirm, that **TheBloke** has the Data Center resources needed to run post-quantiation models against the input and output of the original model to correct as many edge case issues as possible. This is an extra step the most amateur model editors cannot do.
-
-So when looking for a new or existing model to try out, I highly recommend looking in the **TheBloke** for a -GPTQ format model that has a number of Billions of Parameters that is close to (even slightly more than) the GB's of GPU memory you have.  Take it for a test drive and see what happens.
-
-```
-See https://huggingface.co/TheBloke/WizardCoder-Python-13B-V1.0-GPTQ
-```
+**Sliding Window Attention**: Mistral models have a 4096 Token input window limit, however, the underlying model has a sliding window mechanism that can rememeber the last 32K tokens worth of inpyt in the form of Attention Weights. This basically means that an application can treat this model as having anywhere from 4K to 32K input window size but should only (re)-send up to the last 4K at any given time. I.E. configure your LLM application to use a 4K context but don't be surprised if a continuous messagign session works well far past the 4k token limit.
 
 **Parameter Counts:** ML models released for public use list a Parameter Count which refers to the number of 16-Bit Floating Point values inside the Linear Algebraic core of the ML model. The (Parameter Count * Floating-Point Byte Size) can be used to estimate the minimum amount of GPU Memory needed to run the model.  Models below a few 10's of millions of parameters may run just fine on a CPU with no GPU.  100's of millions generally require a GPU and Billions of parameters absolutely require a GPU and possibly many GPU's for the mid-range (~70B) and high end (>120B) models.
 
 **Quantization:** 16-Bit ML models can usually be converted to 8-Bit Floating Point models when loading into an application. 16->8-Bit quantization has a minimal effect on the accuracy of a model but does cut all GPU memory requirements by half. This works because the initial models are designed to be extended so they do not actually hold their theoretical maximum amount of information when released. In a pinch, shaving an equal number of decimal-places off of every floating-point parameter value results in no noticeable loss of data.
 
 ## Installation
-This installation procedure (**recipe_llama2.sh**) will add and configure the bash, RPM, Python, Github and Huggingface assets required to run a private *Code*LLaMa 2 language model inside an OpenHPC Rocky 8.X root filesystem. Every software asset is version-locked to **September 12th 2023** code. This date marks the time when **text-generation-webui** reached a highly stable implementation for LLaMa 2 GPTQ quantized model support. Machine Learning libraries change their API's extremely quickly so slight deviations in module versions can render an entire application unusable. That is just how things in ML right now =D.
+This installation procedure (**recipe_mistral.sh**) will add and configure the bash, RPM, Python, Github and Huggingface assets required to run a private Mistral or *Code* Zephyr language model inside an OpenHPC Rocky 8.X root filesystem. Every software asset is version-locked to **December 16th 2023** code. This date marks the time when **text-generation-webui** reached a highly stable implementation for Mistral model support. Machine Learning libraries change their API's extremely quickly so slight deviations in module versions can render an entire application unusable. That is just how things in ML right now =D.
 
 ## Advice
 Once you have a satisfactory root filesystem + application kit, administrators should **backup the entire root file system and /opt/ai_apps** directory as a unit. There is absolutely no guarantee that all of the Python module, ML model, NVidia driver and other back-dated dependencies will be available online in the near future.
@@ -67,7 +48,7 @@ drwxr-xr-x. 3 root root 4096 Dec  2 18:02 /var/lib/warewulf/chroots/rocky-8  <= 
 ```
 
 ## /opt on NFS
-All python and github assets will be installed under **/opt/ai_apps/webui_llama2**.  The /opt directory is assumed to be accessed via NFS at runtime. These destinations can be changed via the NFSAPPS install variable or the apptainer --bind flag in the installation script. The NFS /opt directory must be writable so text-generation-webui can create chat log histories and character configuration entries. If the /opt directory is not writable then the **/opt/ai_apps/webui_llama2/text-generation-webui** must be copied locally to the compute server. Python can still run from the network.
+All python and github assets will be installed under **/opt/ai_apps/webui_mistral**.  The /opt directory is assumed to be accessed via NFS at runtime. These destinations can be changed via the NFSAPPS install variable or the apptainer --bind flag in the installation script. The NFS /opt directory must be writable so text-generation-webui can create chat log histories and character configuration entries. If the /opt directory is not writable then the **/opt/ai_apps/webui_mistral/text-generation-webui** must be copied locally to the compute server. Python can still run from the network.
 
 ## NVidia Drivers
 Many of the Python modules contain checks against the exact version of the nvidia-driver installed. For this reason the nvidia-driver and CUDA 12.3 driver are both installed in the chroot filesystem rather than at runtime. This will leave a valid bootable linux kernel image inside the chroot's /boot directory as well as an initird image that contains the NVidia and CUDA drivers. The kernel image can be move into a warewulf dedicated kernel are using **wwctl kernel import** command.
@@ -75,15 +56,15 @@ Many of the Python modules contain checks against the exact version of the nvidi
 Also note that the **/usr/local/cuda-12.3** installation tree and the **/opt/nvidia/nsight** will be moved to the warewulf master nost's /opt directory so they are not incorpoarted into the bootable root filesystem.
 
 ## Installation
-Run the **recipe_llama2.sh** script as **root** on the warewulf master dispatch server and all installation and configuration steps will be completed automatically.
+Run the **recipe_mistral.sh** script as **root** on the warewulf master dispatch server and all installation and configuration steps will be completed automatically.
 - The install assumes a fresh or stable Rocky 8.7 chroot image exists in **/var/lib/warewulf/chroots/rocky-8/rootfs**.
 - Change the CHROOT variable in the installation script to relocate the install or change the chroot/<fs name> target.
 - The install will use **apptainer exec** to mount (--bind) the warewulf master /opt to the chroot /opt in the same way a running NFS /opt mount would work.
-- The Python applications and ML Models will be installed into **/opt/ai_apps/webui_llama2/models** and is partially configurable via the NFSAPPS variable.
-- An official **Python 3.11.4** source .TGZ will be downloaded, compiled and **installed into /opt/ai_apps/webui_llama2** since the native Rocky python is too old.
+- The Python applications and ML Models will be installed into **/opt/ai_apps/webui_mistral/models** and is partially configurable via the NFSAPPS variable.
+- An official **Python 3.11.4** source .TGZ will be downloaded, compiled and **installed into /opt/ai_apps/webui_mistral** since the native Rocky python is too old.
 - The chroots/.../usr/local/cuda-12.3 binaries will be moved to the warewulf master server's /opt/cuda/cuda-12.3 and removed from the rootfs.
 - The chroots/.../opt/nvidia/nsight development tools will be moved to the warewulf master server's /opt/nvidia/nsight and removed from the rootfs.
-- The installation will create a series of application scripts in /opt/ai_apps/webui_llama2 that will launch any requested models instantly.
+- The installation will create a series of application scripts in /opt/ai_apps/webui_mistral that will launch any requested models instantly.
 - The installation will create a **run_server.sh** script that will allow the user to choose a model at launch time including new models added by hand.
 - All user-facing assets will be *chown*-ed to the **test** user account at the end of the installation.
 - The **wwctl container build rocky-8** command will run to recreate the bootable container with nvidia driver and updated kernel installed.
@@ -97,15 +78,15 @@ vs
 - Quantization to smaller Floating-Point numbers freeing GPU Memory at the risk of losing some information on the edges
 
 As a general rule, a model with more (Billions of) Parameters and a little Quantization (say 16-Bit -> 8->Bit) is far better than an unquantized model with fewer (Billions of) Parameters.
-- /opt/ai_apps/webui_llama2/**run_wizard_13b_8bit_code.sh**   (13B *  8-Bit FP ~ 13GB min GPU Memory, quantized at load time, best option)
-- /opt/ai_apps/webui_llama2/**run_wizard_7b_16bit_code.sh**   (7B  * 16-Bit FP ~ 14GB min GPU Memory, native un-quantized)
-- /opt/ai_apps/webui_llama2/**run_wizard_13b_4bit_code.sh**   (13B *  4-Bit FP ~  9GB min GPU Memory, quantized and retrained in a data center, also useful)
+- /opt/ai_apps/webui_mistral/**run_zephyr_7b_16bit_code.sh**   (7B * 16-Bit FP ~ 14GB min GPU Memory, native un-quantized)
+- /opt/ai_apps/webui_mistral/**run_zephyr_7b_8bit_code.sh**    (7B *  8-Bit FP ~ 9GB min GPU Memory, quantized at load time, best option)
+- /opt/ai_apps/webui_mistral/**run_zephyr_7b_4bit_code.sh**    (7B *  4-Bit FP ~ 5GB min GPU Memory, quantized and retrained in a data center, also useful)
 - Other smaller models are installed for cases where multiple models are running on a single GPU as is the current trend.
 
 Once Running the text-generation-webui will start listening for web browser requests on port **7860**. Connect using any web browser and let the fun begin.
 
 - **Parameters Tab**:
-- **max_new_tokens** = 2048     <= Input context, amount of text the current model can handle before internal reset (and forgetting your info). Your output will be randomly truncated if you do not set this correctly to match your model.
+- **max_new_tokens** = 4096     <= Input context, amount of text the current model can handle before internal reset (and forgetting your info). Your output will be randomly truncated if you do not set this correctly to match your model.
 - **Seed**: = 0      <= Output has more consistency when repeating questions, seed = -1 makes LLM act more like a fickle person.
 
 - **Chat Tab**:
@@ -113,7 +94,7 @@ Once Running the text-generation-webui will start listening for web browser requ
 - **instruct**: Language model is in **"Assistant"** mode like a strict personal Butler.  Answers are direct and to the point with no cleverness or attitude.
 - **chat-instruct**: Language model in 1/2 way between like a Butler who knows you well enough to be clever and overly suggestive at times.
 
-On the **Parameters Tab** change "**max_new_tokens to 2048**.  This setting is often referred to the Model's **Context Window** or **Input Context**.  In ML a Token is some fraction of a word. On average a Token represents 1/2 a word.  When a model supports **A 2048 Token Context Window** it roughly means it supports about 1000 words of combined input and output (via feedback as input) before the model starts forgetting what you are talking about. For code generation, if you follow the Prompt Engineering recommendations below and be very specific on the first request then it should never be a problem. If you start having back-and-forth dialog then the system will appear forgetful.
+On the **Parameters Tab** change "**max_new_tokens to 4096**.  This setting is often referred to the Model's **Context Window** or **Input Context**.  In ML a Token is some fraction of a word. On average a Token represents 1/2 a word.  When a model supports **A 4096 Token Context Window** it roughly means it supports about 2100 words of combined input and output (via feedback as input) before the model starts forgetting what you are talking about. For code generation, if you follow the Prompt Engineering recommendations below and be very specific on the first request then it should never be a problem. If you start having back-and-forth dialog then the system will appear forgetful.
 
 On the **Parameters Tab** change "**seed to 0**. A seed=-1 gives the model some "moodiness" that is OK in chats but annoying when creating software designs.  I have actually had an LLM **refuse to generate TCSH** in the middle of a heavy Bash scripting session.
 
