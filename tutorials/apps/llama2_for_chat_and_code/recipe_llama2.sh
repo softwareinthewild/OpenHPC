@@ -104,13 +104,13 @@ ${apptainer_shell} bash -e -x -c 'export PYVER=3.11.4; export INSTPATH="'"${NFSA
 cat <<EOF >"${NFSAPPS}/webui_llama2/run_python.sh"
 #!/bin/bash --
 export PYVER=3.11.4
-export CODELLAMA_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
-export PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/bin:/usr/local/bin"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
+export LLMSW_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
+export PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/local/cuda/bin:/usr/bin:/usr/local/bin"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
 
-exec "\${CODELLAMA_INSTALL_ROOT}/python_3.11.4/bin/python3.11" "\$@"
+exec "\${LLMSW_INSTALL_ROOT}/python_3.11.4/bin/python3.11" "\$@"
 EOF
 
 chmod 755 "${NFSAPPS}/webui_llama2/run_python.sh"
@@ -199,15 +199,15 @@ ${apptainer_shell} bash -e -x -c 'cd "'"${NFSAPPS}"'"/webui_llama2/text-generati
 cat <<EOF >"${NFSAPPS}/webui_llama2/run_wizard_13b_8bit_code.sh"
 #!/bin/bash --
 export PYVER=3.11.4
-export CODELLAMA_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
-export PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/bin:/usr/local/bin"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
+export LLMSW_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
+export PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/local/cuda/bin:/usr/bin:/usr/local/bin"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
 
 # Will get KeyError: exception if not run from inside t-g-w/ directory
-cd "\${CODELLAMA_INSTALL_ROOT}/text-generation-webui"
-exec "\${CODELLAMA_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --load-in-8bit --listen  --api --extensions openai --model WizardCoder-Python-13B-V1.0 "\$@"
+cd "\${LLMSW_INSTALL_ROOT}/text-generation-webui"
+exec "\${LLMSW_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --load-in-8bit --listen  --api --extensions openai --model WizardCoder-Python-13B-V1.0 "\$@"
 EOF
 
 chmod 755 "${NFSAPPS}/webui_llama2/run_wizard_13b_8bit_code.sh"
@@ -225,15 +225,15 @@ ${apptainer_shell} bash -e -x -c 'cd "'"${NFSAPPS}"'"/webui_llama2/text-generati
 cat <<EOF >"${NFSAPPS}/webui_llama2/run_wizard_7b_16bit_code.sh"
 #!/bin/bash --
 export PYVER=3.11.4
-export CODELLAMA_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
-export PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/bin:/usr/local/bin"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
+export LLMSW_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
+export PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/local/cuda/bin:/usr/bin:/usr/local/bin"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
 
 # Will get KeyError: exception if not run from inside t-g-w/ directory
-cd "\${CODELLAMA_INSTALL_ROOT}/text-generation-webui"
-exec "\${CODELLAMA_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --listen  --api --extensions openai --model WizardCoder-Python-7B-V1.0 "\$@"
+cd "\${LLMSW_INSTALL_ROOT}/text-generation-webui"
+exec "\${LLMSW_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --listen  --api --extensions openai --model WizardCoder-Python-7B-V1.0 "\$@"
 EOF
 
 chmod 755 "${NFSAPPS}/webui_llama2/run_wizard_7b_16bit_code.sh"
@@ -258,15 +258,15 @@ ${apptainer_shell} bash -e -x -c 'cd "'"${NFSAPPS}"'"/webui_llama2/text-generati
 cat <<EOF >"${NFSAPPS}/webui_llama2/run_wizard_13b_4bit_code.sh"
 #!/bin/bash --
 export PYVER=3.11.4
-export CODELLAMA_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
-export PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/bin:/usr/local/bin"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
+export LLMSW_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
+export PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/local/cuda/bin:/usr/bin:/usr/local/bin"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
 
 # Will get KeyError: exception if not run from inside t-g-w/ directory
-cd "\${CODELLAMA_INSTALL_ROOT}/text-generation-webui"
-exec "\${CODELLAMA_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --listen --api --extensions openai --model WizardCoder-Python-13B-V1.0-GPTQ "\$@"
+cd "\${LLMSW_INSTALL_ROOT}/text-generation-webui"
+exec "\${LLMSW_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --listen --api --extensions openai --model WizardCoder-Python-13B-V1.0-GPTQ "\$@"
 EOF
 
 chmod 755 "${NFSAPPS}/webui_llama2/run_wizard_13b_4bit_code.sh"
@@ -289,15 +289,15 @@ ${apptainer_shell} bash -e -x -c 'cd "'"${NFSAPPS}"'"/webui_llama2/text-generati
 cat <<EOF >"${NFSAPPS}/webui_llama2/run_wizard_7b_4bit_code.sh"
 #!/bin/bash --
 export PYVER=3.11.4
-export CODELLAMA_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
-export PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/bin:/usr/local/bin"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
+export LLMSW_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
+export PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/local/cuda/bin:/usr/bin:/usr/local/bin"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
 
 # Will get KeyError: exception if not run from inside t-g-w/ directory
-cd "\${CODELLAMA_INSTALL_ROOT}/text-generation-webui"
-exec "\${CODELLAMA_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --no_inject_fused_attention --api --extensions openai --listen --model WizardCoder-Python-7B-V1.0-GPTQ "\$@"
+cd "\${LLMSW_INSTALL_ROOT}/text-generation-webui"
+exec "\${LLMSW_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --no_inject_fused_attention --api --extensions openai --listen --model WizardCoder-Python-7B-V1.0-GPTQ "\$@"
 EOF
 
 chmod 755 "${NFSAPPS}/webui_llama2/run_wizard_7b_4bit_code.sh"
@@ -321,15 +321,15 @@ ${apptainer_shell} bash -e -x -c 'cd "'"${NFSAPPS}"'"/webui_llama2/text-generati
 cat <<EOF >"${NFSAPPS}/webui_llama2/run_wizard_1b_32bit_code.sh"
 #!/bin/bash --
 export PYVER=3.11.4
-export CODELLAMA_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
-export PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/bin:/usr/local/bin"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
+export LLMSW_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
+export PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/local/cuda/bin:/usr/bin:/usr/local/bin"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
 
 # Will get KeyError: exception if not run from inside t-g-w/ directory
-cd "\${CODELLAMA_INSTALL_ROOT}/text-generation-webui"
-exec "\${CODELLAMA_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --listen --api --extensions openai --model WizardCoder-1B-V1.0 "\$@"
+cd "\${LLMSW_INSTALL_ROOT}/text-generation-webui"
+exec "\${LLMSW_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --listen --api --extensions openai --model WizardCoder-1B-V1.0 "\$@"
 EOF
 
 chmod 755 "${NFSAPPS}/webui_llama2/run_wizard_1b_32bit_code.sh"
@@ -344,15 +344,15 @@ chmod 755 "${NFSAPPS}/webui_llama2/run_wizard_1b_32bit_code.sh"
 cat <<EOF >"${NFSAPPS}/webui_llama2/run_webui_server.sh"
 #!/bin/bash --
 export PYVER=3.11.4
-export CODELLAMA_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
-export PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/bin:/usr/local/bin"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
-export LD_LIBRARY_PATH="\${CODELLAMA_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
+export LLMSW_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
+export PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/local/cuda/bin:/usr/bin:/usr/local/bin"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
 
 # Will get KeyError: exception if not run from inside t-g-w/ directory
-cd "\${CODELLAMA_INSTALL_ROOT}/text-generation-webui"
-exec "\${CODELLAMA_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --listen  --api --extensions openai --model-menu "\$@"
+cd "\${LLMSW_INSTALL_ROOT}/text-generation-webui"
+exec "\${LLMSW_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --listen  --api --extensions openai --model-menu "\$@"
 EOF
 
 chmod 755 "${NFSAPPS}/webui_llama2/run_webui_server.sh"
