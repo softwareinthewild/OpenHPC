@@ -34,10 +34,12 @@ drwxr-xr-x. 3 root root 4096 Dec  2 18:02 /var/lib/warewulf/chroots/rocky-8  <= 
 ```
 
 ## /opt on NFS
-All python and github assets will be installed under **/opt/ai_apps/webui_llama2**.  The /opt directory is assumed to be accessed via NFS at runtime. These destinations can be changed via the NFSAPPS install variable or the apptainer --bind flag in the installation script.
+All python and github assets will be installed under **/opt/ai_apps/webui_llama2**.  The /opt directory is assumed to be accessed via NFS at runtime. These destinations can be changed via the NFSAPPS install variable or the apptainer --bind flag in the installation script. The NFS /opt directory must be writable so text-generation-webui can create chat log histories and character configuration entries. If the /opt directory is not writable then the **/opt/ai_apps/webui_llama2/text-generation-webui** must be copied locally to the compute server. Python can still run from the network. 
 
 ## NVidia Drivers
-Many of the Python modules contain checks against the exact version of the nvidia-driver installed. For this reason the nvidia-driver and CUDA 12.3 driver are both installed in the chroot filesystem rather than at runtime. This will leave a valid bootable linux kernel image inside the chroot's /boot directory as well as an initird image that contains the NVidia and CUDA drivers.
+Many of the Python modules contain checks against the exact version of the nvidia-driver installed. For this reason the nvidia-driver and CUDA 12.3 driver are both installed in the chroot filesystem rather than at runtime. This will leave a valid bootable linux kernel image inside the chroot's /boot directory as well as an initird image that contains the NVidia and CUDA drivers. The kernel image can be move into a warewulf dedicated kernel are using **wwctl kernel import** command.
+
+Also note that the **/usr/local/cuda-12.3** installation tree and the **/opt/nvidia/nsight** will be moved to the warewulf master nost's /opt directory so they are not incorpoarted into the bootable root filesystem.
 
 ## Installation
 Run the **recipe_llama2.sh** script as **root** on the warewulf master dispatch server and all installation and configuration steps will be completed automatically.
