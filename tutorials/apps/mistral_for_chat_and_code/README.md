@@ -1,4 +1,4 @@
-# Using Text-Generation-Webui with Llama2 Based AI Models
+# Using Text-Generation-Webui with Mistral Based AI Models
 <table>
 <tr>
 <td>
@@ -8,6 +8,7 @@
 
 ## Table of Contents
 - [What are Mistral Dolphin and Zephyr](#what-are-mistral-dolphin-and-zephyr)
+- [OpenAI Completion API](#openai-completion-api)
 - [Installation](#installation)
 - [Advice](#advice)
 - [/opt on NFS](#opt-on-nfs)
@@ -19,21 +20,23 @@
 - [Prompt Engineering](#prompt-engineering)
 - [Explanations and Code Reviews](#explanations-and-code-reviews)
 - [Preloaded Code](#preloaded-code)
-- [What are LLaMa2 and CodeLLaMa](#what-are-mistral-and-codellama)
 - [References](#references)
 
 ## What are Mistral Dolphin and Zephyr
-**Mistral** is a Machine Learning (ML) Large Language Mode (LLM) created by a small company called MistralAI and released to the public in late September 2023. Mistral was released under the Apache 2.0 license permitting unlimited Public and Commercial use. This new model, along with its impressive big brother Mixtral MoE is competing with LLaMa2 for the top spot in Open Source private-use models. The two most popular derivateives of the Mistral model are the Dolphin and Zephyr specialized models.
+**Mistral** is a Machine Learning (ML) Large Language Model (LLM) created by a small company called **MistralAI** and released to the public in late September 2023. Mistral was released under the Apache 2.0 license permitting unlimited Public and Commercial use. This new model, along with its impressive big brother **Mixtral MoE** is competing with LLaMa2 for the top spot in Open Source private-use models. The two most popular derivateives of Mistral are the **Dolphin and Zephyr** specialized models.
 
-**Dolphin** tends to be optimized for Assistant applications or direct ask-and-respond interactions designed of a work computers assigned to specific tasks. **Zephyr** is a realigned edition of the Mistral LLM format retrained by the Open Source community to improved accuracy in wide range of use-cases like Code Generation. For most daily applications there is very little difference between LLaMa 2 and Mistral. However, as the langauge model becomes integrated as a backend into more complex configurations, the Dolphin model is said to outperform most others in concise response and reduced halucination.
+**Dolphin** is Mistral re-trained for Assistant-type applications that need a direct ask-and-respond interactions. **Zephyr** is re-trained by the Open Source community to improved accuracy in wider range of use-cases including Code Generation. For most daily applications there is very little difference between LLaMa 2 and the original Mistral. However, as langauge models becomes integrated as an application-backend, the Dolphin and Zephyr models are said to outperform most others in concise response and reduced halucination.
 
-Also note that the Mistral model was only released in a 7 Billion parameter size (actually 7.3B to be precise). The original datasets used to create Mistral are not public so larger models cannot be made outside of MistralAI. General information on the Internet hints that MistraAI has a 34B and another much larger sized model inhouse but that is not publically confirmed at this time. For this reason there are only 7B parameter options and a few experimental 3B parameter models in evaluation for mobile phone use.
+Also note that the Mistral model was only released in a 7 Billion parameter size (actually 7.3B to be precise). The original datasets used to create Mistral are not public so larger models cannot be made outside of MistralAI. General information on the Internet hints that MistraAI has a 34B and another much larger sized model inhouse but that is not publically confirmed at this time. For this reason there are only 7B parameter options and a few experimental 3B parameter models in evaluation for mobile phone use.  I will also mention that there is a large 70B parameter model called **airoboros** that supersceeds Dolphin for Enterprise/Data Center. Airoboros is not Mistral-based but shares some post-creation data sets is common so you may often see Dolphin and Airoboros mentioned together.
 
-**Sliding Window Attention**: Mistral models have a 4096 Token input window limit, however, the underlying model has a sliding window mechanism that can rememeber the last 32K tokens worth of inpyt in the form of Attention Weights. This basically means that an application can treat this model as having anywhere from 4K to 32K input window size but should only (re)-send up to the last 4K at any given time. I.E. configure your LLM application to use a 4K context but don't be surprised if a continuous messagign session works well far past the 4k token limit.
+**Sliding Window Attention**: Mistral models have a 4096 Token input window limit, however, the underlying model has a sliding window mechanism that can rememeber the last 32K tokens worth of input in the form of Attention Weights. This basically means that an application can treat this model as having a 4K Token Input Window with a 32K Concept Input Window. Better expressed as  (re)-send up to the last 4K at any given time. I.E. configure your LLM application to use a 4K context but don't be surprised if a continuous messagign session works well far past the 4k token limit.
 
 **Parameter Counts:** ML models released for public use list a Parameter Count which refers to the number of 16-Bit Floating Point values inside the Linear Algebraic core of the ML model. The (Parameter Count * Floating-Point Byte Size) can be used to estimate the minimum amount of GPU Memory needed to run the model.  Models below a few 10's of millions of parameters may run just fine on a CPU with no GPU.  100's of millions generally require a GPU and Billions of parameters absolutely require a GPU and possibly many GPU's for the mid-range (~70B) and high end (>120B) models.
 
 **Quantization:** 16-Bit ML models can usually be converted to 8-Bit Floating Point models when loading into an application. 16->8-Bit quantization has a minimal effect on the accuracy of a model but does cut all GPU memory requirements by half. This works because the initial models are designed to be extended so they do not actually hold their theoretical maximum amount of information when released. In a pinch, shaving an equal number of decimal-places off of every floating-point parameter value results in no noticeable loss of data.
+
+## OpenAI Completion API
+OpenAI has published a standard for API-based interaction with LLM's and this has beome widely popular. Text-generation-webui supports this API on port 5000 whenever the **--extensions openai** flags are adedd to the command line.  Assistant-based apps are the primary hot-topic use for Dolphin model so this flag has been added to every Mistral startup script.
 
 ## Installation
 This installation procedure (**recipe_mistral.sh**) will add and configure the bash, RPM, Python, Github and Huggingface assets required to run a private Mistral or *Code* Zephyr language model inside an OpenHPC Rocky 8.X root filesystem. Every software asset is version-locked to **December 16th 2023** code. This date marks the time when **text-generation-webui** reached a highly stable implementation for Mistral model support. Machine Learning libraries change their API's extremely quickly so slight deviations in module versions can render an entire application unusable. That is just how things in ML right now =D.
@@ -81,7 +84,10 @@ As a general rule, a model with more (Billions of) Parameters and a little Quant
 - /opt/ai_apps/webui_mistral/**run_zephyr_7b_16bit_code.sh**   (7B * 16-Bit FP ~ 14GB min GPU Memory, native un-quantized)
 - /opt/ai_apps/webui_mistral/**run_zephyr_7b_8bit_code.sh**    (7B *  8-Bit FP ~ 9GB min GPU Memory, quantized at load time, best option)
 - /opt/ai_apps/webui_mistral/**run_zephyr_7b_4bit_code.sh**    (7B *  4-Bit FP ~ 5GB min GPU Memory, quantized and retrained in a data center, also useful)
-- Other smaller models are installed for cases where multiple models are running on a single GPU as is the current trend.
+
+- /opt/ai_apps/webui_mistral/**run_dolphin_7b_16bit_chat.sh**   (7B * 16-Bit FP ~ 14GB min GPU Memory, native un-quantized)
+- /opt/ai_apps/webui_mistral/**run_dolphin_7b_8bit_chat.sh**    (7B *  8-Bit FP ~ 9GB min GPU Memory, quantized at load time, best option)
+- /opt/ai_apps/webui_mistral/**run_dolphin_7b_4bit_chat.sh**    (7B *  4-Bit FP ~ 5GB min GPU Memory, quantized and retrained in a data center, also useful)
 
 Once Running the text-generation-webui will start listening for web browser requests on port **7860**. Connect using any web browser and let the fun begin.
 
@@ -102,7 +108,7 @@ On the **Parameters Tab** change "**seed to 0**. A seed=-1 gives the model some 
 <table cellspacing="0" cellpadding="0" style="width: 1000px; border-collapse: collapse; border: none;">
 <tr style="border: none;">
 <td style="width: 35%; border: none;">
-<img src="../images/Model_Settings.png" alt="Model Settings" height="750" width="700">
+<img src="../images/Mistral_Model_Settings.png" alt="Model Settings" height="750" width="700">
 </td>
 </tr>
 </table>
@@ -115,7 +121,7 @@ On the main **Chat Tab** in the **Show Controls** section near the bottom of the
 <table cellspacing="0" cellpadding="0" style="width: 1000px; border-collapse: collapse; border: none;">
 <tr style="border: none;">
 <td style="width: 35%; border: none;">
-<img src="../images/Instruct_Mode_Ansible.png" alt="Instruct mode" height="700" width="700">
+<img src="../images/Mistral_Instruct_Mode_Ansible.png" alt="Instruct mode" height="700" width="700">
 </td>
 </tr>
 </table>
@@ -134,7 +140,7 @@ Language models, like HTTP requests, are state-less. Applications that use LLMs 
 <table cellspacing="0" cellpadding="0" style="width: 1000px; border-collapse: collapse; border: none;">
 <tr style="border: none;">
 <td style="width: 35%; border: none;">
-<img src="../images/Clear_TGW_window.png" alt="Clear Context" height="750" width="700">
+<img src="../images/Mistral_Clear_Context.png" alt="Clear Context" height="750" width="700">
 </td>
 </tr>
 </table>
@@ -160,7 +166,7 @@ Prompt Engineering is an attempt to improve an LLM's accuracy when terse or cont
 <table cellspacing="0" cellpadding="0" style="width: 1000px; border-collapse: collapse; border: none;">
 <tr style="border: none;">
 <td style="width: 35%; border: none;">
-<img src="../images/Python_Sqlalchemy_Select.png" alt="Model Settings" height="750" width="700">
+<img src="../images/Mistral_Python_Sqlalchemy_Select.png" alt="Model Settings" height="750" width="700">
 </td>
 </tr>
 </table>
@@ -170,7 +176,7 @@ Prompt Engineering is an attempt to improve an LLM's accuracy when terse or cont
 <table cellspacing="0" cellpadding="0" style="width: 1000px; border-collapse: collapse; border: none;">
 <tr style="border: none;">
 <td style="width: 35%; border: none;">
-<img src="../images/Python3_GNU_Download.png" alt="Model Settings" height="750" width="700">
+<img src="../images/Mistral_Python3_GNU_Download.png" alt="Model Settings" height="750" width="700">
 </td>
 </tr>
 </table>
@@ -213,7 +219,7 @@ Note that the English request makes direct reference to table and field names wh
 <table cellspacing="0" cellpadding="0" style="width: 1000px; border-collapse: collapse; border: none;">
 <tr style="border: none;">
 <td style="width: 35%; border: none;">
-<img src="../images/SQL_From_Schema.png" alt="SQL Schema" height="750" width="700">
+<img src="../images/Mistral_SQL_From_Schema.png" alt="SQL Schema" height="750" width="700">
 </td>
 </tr>
 </table>

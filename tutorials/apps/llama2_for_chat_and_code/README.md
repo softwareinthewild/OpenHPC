@@ -19,11 +19,10 @@
 - [Prompt Engineering](#prompt-engineering)
 - [Explanations and Code Reviews](#explanations-and-code-reviews)
 - [Preloaded Code](#preloaded-code)
-- [What are LLaMa2 and CodeLLaMa](#what-are-llama2-and-codellama)
 - [References](#references)
 
 ## What are LLaMa2 and CodeLLaMa
-**LLaMa2** is a Machine Learning (ML) Large Language Mode (LLM) created by Meta (aka. Facebook) and released to the public in July 2023. The LLaMa2 license permits unlimited Public and Commercial use except for Meta's AI direct competitors (Google, LinkedIn...). This openness has sparked a massive eco-system of derivative models retrained for personal and practical use. In ML, the term retraining is analogous to providing a software patch with new functionality, new information or both.
+**LLaMa2** is a Machine Learning (ML) Large Language Model (LLM) created by Meta (aka. Facebook) and released to the public in July 2023. The LLaMa2 license permits unlimited Public and Commercial use except for Meta's AI direct competitors (Google, LinkedIn...). This openness has sparked a massive eco-system of derivative models retrained for personal and practical use. In ML, the term retraining is analogous to providing a software patch with new functionality, new information or both.
 
 All LLaMa2 derived models follow the same structure so they are interchangeable within the text-generation-webui software as long as your hardware has the required GPU resources. This installation procedure will download and install the **WizardLM** set of Code models derived from the CodeLLaMa text-to-code (English to Source Code) generator. If you look for the **WizardLM** model set on huggingface.com you will also notice other specialized models retrained for Math-Reasoning (aka solving SAT questions) and other impressive use cases.
 
@@ -100,7 +99,6 @@ As a general rule, a model with more (Billions of) Parameters and a little Quant
 - /opt/ai_apps/webui_llama2/**run_wizard_13b_8bit_code.sh**   (13B *  8-Bit FP ~ 13GB min GPU Memory, quantized at load time, best option)
 - /opt/ai_apps/webui_llama2/**run_wizard_7b_16bit_code.sh**   (7B  * 16-Bit FP ~ 14GB min GPU Memory, native un-quantized)
 - /opt/ai_apps/webui_llama2/**run_wizard_13b_4bit_code.sh**   (13B *  4-Bit FP ~  9GB min GPU Memory, quantized and retrained in a data center, also useful)
-- Other smaller models are installed for cases where multiple models are running on a single GPU as is the current trend.
 
 Once Running the text-generation-webui will start listening for web browser requests on port **7860**. Connect using any web browser and let the fun begin.
 

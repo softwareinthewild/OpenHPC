@@ -341,7 +341,7 @@ chmod 755 "${NFSAPPS}/run_wizard_1b_32bit_code.sh"
 # knowledge about the model because it may not fit on your system without a --load-in-8bit
 # quantization or other args.  Your mileage may vary =)
 #
-cat <<EOF >"${NFSAPPS}/run_webui_server.sh"
+cat <<EOF >"${NFSAPPS}/run_server.sh"
 #!/bin/bash --
 export PYVER=3.11.4
 export LLMSW_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
@@ -355,7 +355,7 @@ cd "\${LLMSW_INSTALL_ROOT}/text-generation-webui"
 exec "\${LLMSW_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --listen  --api --extensions openai --model-menu "\$@"
 EOF
 
-chmod 755 "${NFSAPPS}/run_webui_server.sh"
+chmod 755 "${NFSAPPS}/run_server.sh"
 
 # ========================================================================================
 

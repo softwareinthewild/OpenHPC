@@ -228,6 +228,42 @@ chmod 755 "${NFSAPPS}/un_zephyr_7b_8bit_code.sh"
 
 # ========================================================================================
 #
+# This is a 7 Billion floating point x 4-bit model that will use about 5 GB of VRam.
+# It will also use about 500M of VRam when under load answering small questions.
+# If you plan to run other models on the same GPU for other purposes then this might
+# be a good option for code-generation dominant GPU work.
+#
+MODEL_REPO="https://huggingface.co/TheBloke/zephyr-7B-beta-GPTQ"
+${apptainer_shell} bash -e -x -c 'cd "'"${NFSAPPS}"'"/models; git lfs clone '"${MODEL_REPO}"
+${apptainer_shell} bash -e -x -c 'cd "'"${NFSAPPS}"'"/text-generation-webui/models; ln -sfv ../../models/zephyr-7B-beta-GPTQ .'
+
+cat <<EOF >"${NFSAPPS}/run_zephyr_7b_4bit_code.sh"
+#!/bin/bash --
+export PYVER=3.11.4
+export LLMSW_INSTALL_ROOT="\$(dirname \$(realpath -L "\$0"))"
+export PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/bin:/bin:/usr/local/cuda/bin:/usr/bin:/usr/local/bin"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cudnn/lib"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cusparse/lib:\${LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="\${LLMSW_INSTALL_ROOT}/python_\${PYVER}/lib/python3.11/site-packages/nvidia/cuda_runtime/lib:\${LD_LIBRARY_PATH}"
+
+
+# In the new version of text-generation-webui the default model loader for GPTQ models chagned from AutoGPTQ
+# to Exllamav2_HF. This new default loader has a bug that reinflates a 4bit model back to 8bit inside the GPU
+# consuming a long of GPU memory for nothing.  Disabling all exllama{}v2} parsers and forcing the loader back
+# to AutoGPTQ lets this model in 5.2GB leaving lots of room for other apps to share the GPU.  Also note that
+# the mistral model performance is slower that others but it's worth the memory savings for MemGPT co-usage.
+# Mistral models are more complicated internally than llama2 so this slowness is expected when quantized.
+
+
+# Will get KeyError: exception if not run from inside t-g-w/ directory
+cd "\${LLMSW_INSTALL_ROOT}/text-generation-webui"
+exec "\${LLMSW_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --listen --disable_exllama --disable_exllamav2 --loader autogptq --extensions openai --model zephyr-7B-beta-GPTQ "\$@"
+EOF
+
+chmod 755 "${NFSAPPS}/run_zephyr_7b_4bit_code.sh"
+
+# ========================================================================================
+#
 # This is a 7 Billion floating point x 16-Bit model. This model also uses 13.2 GB of VRam
 # but does not use any downsampling (quantizition) during loading. This is the largest
 # unaltered model that will fit and run on a 16GB GPU.
