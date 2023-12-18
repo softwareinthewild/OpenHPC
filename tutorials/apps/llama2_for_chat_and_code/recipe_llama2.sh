@@ -83,6 +83,15 @@ ln -s /opt/cuda/cuda-12.3 "${CHROOT}/usr/local/cuda-12.3"
 
 # ========================================================================================
 
+mkdir -fv "${NSIGHTROOT}"
+if [ ! -d "${NSIGHTROOT}/nsight" ]
+then
+    mv -fv "${CHROOT}/opt/nvidia/nsight" "${NSIGHTROOT}"/
+fi
+rm -rfv "${CHROOT}/opt/nvidia"
+
+# ========================================================================================
+
 # Python interpreter build requirements, may be uninstalled after PY build
 PACKAGES="tk-devel tcl-devel xz-devel gdbm-devel libffi-devel openssl-devel bzip2-devel libuuid-devel readline-devel sqlite-devel ncurses-devel"
 ${apptainer_shell} bash -e -x -c "dnf -y install ${PACKAGES}"
