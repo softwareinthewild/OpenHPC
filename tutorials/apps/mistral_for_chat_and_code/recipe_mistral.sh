@@ -1,7 +1,7 @@
 #!/bin/bash --
 ###############################################################################
 #
-# Installation of Text-Generation-Webui with Cuda 11 and Code dated Sep 18 2023
+# Installation of Text-Generation-Webui with Cuda 11 and Code dated Dec 22 2023
 #
 # Note: The cuda 11 above refers to the cuda libs embedded inside the PY module
 # packages. The root filesystem does not need to have CUDA libraries installed.
@@ -9,16 +9,8 @@
 #
 ###############################################################################
 
-# Facebook's Llama2 Base model and it's specialized offshoots (CodeLlama, ...)
-# work best with a back-dated version of the text-generation-webui from github.
-# Newer text-generation-webui version are under heavy development for the next
-# generation of Mistral and other mode advanced model configurations so runtime
-# stability, model compatibility and GPU VRam bloat are contunually changing.
-# The exact choice of GUI code from github, python modules and huggingface
-# quantized (GPTQ) model(s) have been tested and confirmed to be stable with
-# 10GB of GPU VRam utilization on 16GB VRam systems.
-
-export CHROOT=/var/lib/warewulf/chroots/rocky-8/rootfs
+export CHROOT_NAME=rocky-8
+export CHROOT="/var/lib/warewulf/chroots/${CHROOT_NAME}/rootfs"
 export NFSAPPS=/opt/ai_apps/webui_mistral
 export CUDAROOT=/opt/cuda
 export NSIGHTROOT=/opt/nvidia
@@ -66,7 +58,7 @@ dnf -y --installroot="${CHROOT}" clean all
 
 # Move the rootfs/usr/local/cuda-12.3 to the /opt on warewulf server for nfs
 # Move the rootfs/opt/nvidia to /opt/ on nfs server
-mkdir -fv "${CUDAROOT}"
+mkdir -pv "${CUDAROOT}"
 if [ -d "${CUDAROOT}/cuda-12.3" ]
 then
     rm -fv "${CHROOT}/usr/local/cuda-12.3"
@@ -83,7 +75,7 @@ ln -s /opt/cuda/cuda-12.3 "${CHROOT}/usr/local/cuda-12.3"
 
 # ========================================================================================
 
-mkdir -fv "${NSIGHTROOT}"
+mkdir -pv "${NSIGHTROOT}"
 if [ ! -d "${NSIGHTROOT}/nsight" ]
 then
     mv -fv "${CHROOT}/opt/nvidia/nsight" "${NSIGHTROOT}"/
@@ -99,7 +91,7 @@ ${apptainer_shell} bash -e -x -c 'export PYVER=3.11.4; export INSTPATH="'"${NFSA
 ${apptainer_shell} bash -e -x -c "rpm -e --nodeps ${PACKAGES}"
 
 ${apptainer_shell} bash -e -x -c 'dnf -y install git git-lfs'
-${apptainer_shell} bash -e -x -c 'export PYVER=3.11.4; export INSTPATH="'"${NFSAPPS}"'"; cd ${INSTPATH}; git clone '"${TGW_GITHUB}"'; cd text-generation-webui; git checkout '"${TGW_HASHREF}"
+${apptainer_shell} bash -e -x -c 'export PYVER=3.11.4; export INSTPATH="'"${NFSAPPS}"'"; cd ${INSTPATH}; git clone '"${TGW_GITHUB}"'; cd $(basename '"${TGW_GITHUB}"' .git); git checkout '"${TGW_HASHREF}"
 
 cat <<EOF >"${NFSAPPS}/run_python.sh"
 #!/bin/bash --
@@ -166,11 +158,15 @@ PACKAGES="${PACKAGES} yarl==1.9.2"
 ${apptainer_shell} bash -e -x -c 'export INSTPATH="'"${NFSAPPS}"'"; ${INSTPATH}/run_python.sh -mpip install --no-cache-dir '"${PACKAGES}"
 
 PACKAGES="https://github.com/jllllll/ctransformers-cuBLAS-wheels/releases/download/AVX2/ctransformers-0.2.27+cu117-py3-none-any.whl"
-# Note that in these urls the (pairs of) versions of python was changed from cp310 to cp311
+# Note that in these urls the (pairs of) versions of python has changed from cp310 to cp311
 PACKAGES="${PACKAGES} https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.4.2/auto_gptq-0.4.2+cu117-cp311-cp311-linux_x86_64.whl"
 PACKAGES="${PACKAGES} https://github.com/jllllll/exllama/releases/download/0.0.17/exllama-0.0.17+cu117-cp311-cp311-linux_x86_64.whl"
 PACKAGES="${PACKAGES} https://github.com/jllllll/GPTQ-for-LLaMa-CUDA/releases/download/0.1.0/gptq_for_llama-0.1.0+cu117-cp311-cp311-linux_x86_64.whl"
 PACKAGES="${PACKAGES} https://github.com/jllllll/llama-cpp-python-cuBLAS-wheels/releases/download/textgen-webui/llama_cpp_python_cuda-0.1.85+cu117-cp311-cp311-linux_x86_64.whl"
+${apptainer_shell} bash -e -x -c 'export INSTPATH="'"${NFSAPPS}"'"; ${INSTPATH}/run_python.sh -mpip install --no-cache-dir '"${PACKAGES}"
+
+PACKAGES="certifi==2023.11.17 charset-normalizer==3.3.2 idna==3.6 markdown-it-py==3.0.0"
+PACKAGES="${PACKAGES} mdurl==0.1.2 pip_search==0.0.12 pygments==2.17.2 requests==2.31.0 rich==13.7.0 urllib3==2.1.0"
 ${apptainer_shell} bash -e -x -c 'export INSTPATH="'"${NFSAPPS}"'"; ${INSTPATH}/run_python.sh -mpip install --no-cache-dir '"${PACKAGES}"
 
 # ========================================================================================
@@ -205,7 +201,7 @@ cd "\${LLMSW_INSTALL_ROOT}/text-generation-webui"
 exec "\${LLMSW_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --listen --extensions openai --model zephyr-7b-beta "\$@"
 EOF
 
-chmod 755 "${NFSAPPS}/un_zephyr_7b_16bit_code.sh"
+chmod 755 "${NFSAPPS}/run_zephyr_7b_16bit_code.sh"
 
 # This is a 7 Billion floating point x 8-Bit model. This model also uses 8 GB of VRam
 #
@@ -224,7 +220,7 @@ cd "\${LLMSW_INSTALL_ROOT}/text-generation-webui"
 exec "\${LLMSW_INSTALL_ROOT}/python_3.11.4/bin/python3.11" ./server.py --listen --load-in-8bit --extensions openai --model zephyr-7b-beta "\$@"
 EOF
 
-chmod 755 "${NFSAPPS}/un_zephyr_7b_8bit_code.sh"
+chmod 755 "${NFSAPPS}/run_zephyr_7b_8bit_code.sh"
 
 # ========================================================================================
 #
@@ -375,7 +371,7 @@ ${apptainer_shell} bash -e -x -c 'chown -Rh test:users "'"${NFSAPPS}"'"/'
 
 # ========================================================================================
 # Container rebuild is crucial, other commands may not be needed but should be harmless
-wwctl container build rocky-8
+wwctl container build "${CHROOT_NAME}"
 wwctl configure --all
 wwctl overlay build
 wwctl server restart

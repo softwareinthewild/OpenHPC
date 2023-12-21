@@ -18,7 +18,8 @@
 # quantized (GPTQ) model(s) have been tested and confirmed to be stable with
 # 10GB of GPU VRam utilization on 16GB VRam systems.
 
-export CHROOT=/var/lib/warewulf/chroots/rocky-8/rootfs
+export CHROOT_NAME=rocky-8
+export CHROOT="/var/lib/warewulf/chroots/${CHROOT_NAME}/rootfs"
 export NFSAPPS=/opt/ai_apps/webui_llama2
 export CUDAROOT=/opt/cuda
 export NSIGHTROOT=/opt/nvidia
@@ -66,7 +67,7 @@ dnf -y --installroot="${CHROOT}" clean all
 
 # Move the rootfs/usr/local/cuda-12.3 to the /opt on warewulf server for nfs
 # Move the rootfs/opt/nvidia to /opt/ on nfs server
-mkdir -fv "${CUDAROOT}"
+mkdir -pv "${CUDAROOT}"
 if [ -d "${CUDAROOT}/cuda-12.3" ]
 then
     rm -fv "${CHROOT}/usr/local/cuda-12.3"
@@ -83,7 +84,7 @@ ln -s /opt/cuda/cuda-12.3 "${CHROOT}/usr/local/cuda-12.3"
 
 # ========================================================================================
 
-mkdir -fv "${NSIGHTROOT}"
+mkdir -pv "${NSIGHTROOT}"
 if [ ! -d "${NSIGHTROOT}/nsight" ]
 then
     mv -fv "${CHROOT}/opt/nvidia/nsight" "${NSIGHTROOT}"/
@@ -117,6 +118,7 @@ chmod 755 "${NFSAPPS}/run_python.sh"
 
 PACKAGES="beautifulsoup4==4.12.2 soupsieve==2.5"
 ${apptainer_shell} bash -e -x -c 'export INSTPATH="'"${NFSAPPS}"'"; ${INSTPATH}/run_python.sh -mpip install --no-cache-dir '"${PACKAGES}"
+
 PACKAGES="bs4==0.0.1 lit==16.0.6 ffmpy==0.3.1 pathtools==0.1.2"
 ${apptainer_shell} bash -e -x -c 'export INSTPATH="'"${NFSAPPS}"'"; ${INSTPATH}/run_python.sh -mpip install --no-cache-dir '"${PACKAGES}"
 
@@ -171,6 +173,10 @@ PACKAGES="${PACKAGES} https://github.com/PanQiWei/AutoGPTQ/releases/download/v0.
 PACKAGES="${PACKAGES} https://github.com/jllllll/exllama/releases/download/0.0.17/exllama-0.0.17+cu117-cp311-cp311-linux_x86_64.whl"
 PACKAGES="${PACKAGES} https://github.com/jllllll/GPTQ-for-LLaMa-CUDA/releases/download/0.1.0/gptq_for_llama-0.1.0+cu117-cp311-cp311-linux_x86_64.whl"
 PACKAGES="${PACKAGES} https://github.com/jllllll/llama-cpp-python-cuBLAS-wheels/releases/download/textgen-webui/llama_cpp_python_cuda-0.1.85+cu117-cp311-cp311-linux_x86_64.whl"
+${apptainer_shell} bash -e -x -c 'export INSTPATH="'"${NFSAPPS}"'"; ${INSTPATH}/run_python.sh -mpip install --no-cache-dir '"${PACKAGES}"
+
+PACKAGES="certifi==2023.11.17 charset-normalizer==3.3.2 idna==3.6 markdown-it-py==3.0.0"
+PACKAGES="${PACKAGES} mdurl==0.1.2 pip_search==0.0.12 pygments==2.17.2 requests==2.31.0 rich==13.7.0 urllib3==2.1.0"
 ${apptainer_shell} bash -e -x -c 'export INSTPATH="'"${NFSAPPS}"'"; ${INSTPATH}/run_python.sh -mpip install --no-cache-dir '"${PACKAGES}"
 
 # ========================================================================================
@@ -363,7 +369,7 @@ ${apptainer_shell} bash -e -x -c 'chown -Rh test:users "'"${NFSAPPS}"'"/'
 
 # ========================================================================================
 # Container rebuild is crucial, other commands may not be needed but should be harmless
-wwctl container build rocky-8
+wwctl container build "${CHROOT_NAME}"
 wwctl configure --all
 wwctl overlay build
 wwctl server restart
